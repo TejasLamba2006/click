@@ -1199,6 +1199,30 @@ def test_missing_envvar_sequence(runner, envvar, expected):
     assert f"Error: Missing option {expected}." in result.output
 
 
+@pytest.mark.parametrize(
+    ("kwargs", "args", "expected"),
+    [
+        ({}, [], "Missing option '--port' (env var: 'MYAPP_PORT')."),
+        ({"type": int}, ["--port", "x"], "'--port' (env var: 'MYAPP_PORT')"),
+        ({"show_envvar": False}, [], "Missing option '--port'."),
+        ({"allow_from_autoenv": False}, [], "Missing option '--port'."),
+        ({"envvar": "PORT"}, [], "Missing option '--port' (env var: 'PORT')."),
+    ],
+)
+def test_error_hint_auto_envvar_prefix(runner, kwargs, args, expected):
+    """The error hint names the variable ``--help`` shows for ``auto_envvar_prefix``."""
+    kwargs = {"show_envvar": True, "required": True} | kwargs
+    cli = click.Command("cli", params=[click.Option(["--port"], **kwargs)])
+    result = runner.invoke(cli, args, auto_envvar_prefix="MYAPP")
+    assert result.exit_code == 2
+    assert expected in result.output
+
+
+def test_error_hint_without_context():
+    option = click.Option(["--port"], show_envvar=True)
+    assert option.get_error_hint(None) == "'--port'"
+
+
 def test_case_insensitive_choice(runner):
     @click.command()
     @click.option("--foo", type=click.Choice(["Orange", "Apple"], case_sensitive=False))
